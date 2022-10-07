@@ -382,6 +382,32 @@ int flash_get_status2(flash_t *obj)
     return status;
 }
 
+/*
+Function Description:
+This function aims to read the value of the status register 3.
+It can be used to check the current status of the flash 
+Please refer to the datatsheet of flash for more details of the content of status register.
+
+* @brief  Read Status register 3 to check flash status
+* @param  obj: Specifies the parameter of flash object.
+* @retval status: the value of status register.
+*/
+int flash_get_status3(flash_t *obj)
+{
+    phal_spic_adaptor_t phal_spic_adaptor;
+    pflash_cmd_t cmd;
+    u8 status = 0;
+
+    flash_init(obj);
+    phal_spic_adaptor = (obj->phal_spic_adaptor);
+    cmd = phal_spic_adaptor->cmd;
+
+    flash_resource_lock();
+    status = hal_flash_get_status(phal_spic_adaptor, cmd->rdsr3);
+    flash_resource_unlock();
+
+    return status;
+}
 
 /*
 Function Description:
@@ -400,18 +426,21 @@ int flash_set_status(flash_t *obj, uint32_t data)
 {   
     phal_spic_adaptor_t phal_spic_adaptor;
     pflash_cmd_t cmd;
+    u8 status_value = 0;
 
     flash_init(obj);
     phal_spic_adaptor = (obj->phal_spic_adaptor);
     cmd = phal_spic_adaptor->cmd;
     
+    status_value = flash_get_status2(obj);
     flash_resource_lock();
     
     if (phal_spic_adaptor->quad_pin_sel) {
         switch (phal_spic_adaptor->flash_type) {
             case FLASH_TYPE_GD:
             case FLASH_TYPE_XTX:
-                data = (data & 0xFF) | 0x200;            
+            case FLASH_TYPE_TSTE:
+                data = ((status_value << 8) | (data & 0xFF));
                 hal_flash_set_write_enable(phal_spic_adaptor);
                 spic_tx_cmd(phal_spic_adaptor, cmd->wrsr, 2, (u8*)&data);
                 break;
@@ -455,21 +484,21 @@ int flash_set_status2(flash_t *obj, uint32_t data)
     phal_spic_adaptor = (obj->phal_spic_adaptor);
     cmd = phal_spic_adaptor->cmd;
     
+    status_value = flash_get_status(obj) & 0xFF;
     flash_resource_lock();
     
     if (phal_spic_adaptor->quad_pin_sel) {
         switch (phal_spic_adaptor->flash_type) {
             case FLASH_TYPE_GD:
             case FLASH_TYPE_XTX:
-                status_value = flash_get_status(obj) & 0xFF;
+            case FLASH_TYPE_TSTE:
                 data = status_value | ((0x2 | data) << 8);            
                 hal_flash_set_write_enable(phal_spic_adaptor);
                 spic_tx_cmd(phal_spic_adaptor, cmd->wrsr, 2, (u8*)&data);
                 break;
         
             case FLASH_TYPE_MXIC:
-                status_value = flash_get_status(obj) & 0xFF;
-                data = (status_value | (data << 8));
+                data = (status_value | ((data & 0xFF) << 8));
                 hal_flash_set_write_enable(phal_spic_adaptor);
                 spic_tx_cmd(phal_spic_adaptor, cmd->wrsr, 2, (u8*)&data);
                 break;
@@ -483,8 +512,8 @@ int flash_set_status2(flash_t *obj, uint32_t data)
             case FLASH_TYPE_GD:
             case FLASH_TYPE_XTX:
             case FLASH_TYPE_MXIC:
-                status_value = flash_get_status(obj) & 0xFF;
-                data = status_value | (data << 8);            
+            case FLASH_TYPE_TSTE:
+                data = status_value | ((data & 0xFF) << 8);
                 hal_flash_set_write_enable(phal_spic_adaptor);
                 spic_tx_cmd(phal_spic_adaptor, cmd->wrsr, 2, (u8*)&data);
                 break;
@@ -498,45 +527,42 @@ int flash_set_status2(flash_t *obj, uint32_t data)
     return 1;
 }
 
+/*
+Function Description:
+This function aims to set the value of the status register 3.
+Please refer to the datatsheet of flash for more details of the content of status register.
+
+* @brief  Set Status register 3 to enable desired operation
+* @param  obj: Specifies the parameter of flash object.
+* @param  data: Specifies which bit users like to set
+   ex: if users want to set the third bit, data = 0x8. 
+* @retval   status: Success:1 or Failure: Others.
+*/
+int flash_set_status3(flash_t *obj, uint32_t data)
+{
+    phal_spic_adaptor_t phal_spic_adaptor;
+    pflash_cmd_t cmd;
+
+    flash_init(obj);
+    phal_spic_adaptor = (obj->phal_spic_adaptor);
+    cmd = phal_spic_adaptor->cmd;
+
+    flash_resource_lock();
+    hal_flash_set_status(phal_spic_adaptor, cmd->wrsr3, (u8)data);
+    flash_resource_unlock();
+    return 1;
+}
 
 /*
 Function Description:
 This function aims to reset the status register, please make sure the operation is appropriate.
-* @brief  Set the Status register to 0
+* @brief  Set the Status register 1 to 0
 * @param  obj: Specifies the parameter of flash object.
 * @retval None.
 */
 void flash_reset_status(flash_t *obj)
 {
-    phal_spic_adaptor_t phal_spic_adaptor;
-    pflash_cmd_t cmd;
-    u32 data = 0;
-
-    flash_init(obj);
-    phal_spic_adaptor = (obj->phal_spic_adaptor);
-    cmd = phal_spic_adaptor->cmd;
-    
-    flash_resource_lock();
-    if (phal_spic_adaptor->quad_pin_sel) {
-        switch (phal_spic_adaptor->flash_type) {
-            case FLASH_TYPE_GD:
-            case FLASH_TYPE_XTX:
-                data = (data & 0xFF) | 0x200;            
-                hal_flash_set_write_enable(phal_spic_adaptor);
-                spic_tx_cmd(phal_spic_adaptor, cmd->wrsr, 2, (u8*)&data);
-                break;
-        
-            case FLASH_TYPE_MXIC:
-                hal_flash_set_status(phal_spic_adaptor, cmd->wrsr, (u8)(data | 0x40));                
-                break;
-        
-            default:
-                hal_flash_set_status(phal_spic_adaptor, cmd->wrsr, (u8)data);
-        }
-    } else {       
-        hal_flash_set_status(phal_spic_adaptor, cmd->wrsr, (u8)data);
-    }
-    flash_resource_unlock();
+    flash_set_status(obj, 0x00);
 }
 
 /*

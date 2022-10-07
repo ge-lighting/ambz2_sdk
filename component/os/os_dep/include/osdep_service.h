@@ -41,10 +41,12 @@ extern "C" {
 	#define USE_MUTEX_FOR_SPINLOCK	1
 #endif
 
+#ifndef PLATFORM_OHOS
 #if (CONFIG_PLATFORM_AMEBA_X == 1)
 	#define CONFIG_MEM_MONITOR	MEM_MONITOR_SIMPLE
 #else
 	#define CONFIG_MEM_MONITOR	MEM_MONITOR_SIMPLE
+#endif
 #endif
 
 /* Define compilor specific symbol */
@@ -134,7 +136,11 @@ extern "C" {
 
 
 #if defined(PLATFORM_FREERTOS)
+#ifdef PLATFORM_OHOS
+#include "liteos_service.h"
+#else
 #include "freertos_service.h"
+#endif
 #elif defined(PLATFORM_ECOS)
 #include "ecos/ecos_service.h"
 #elif defined(PLATFORM_CMSIS_RTOS)
@@ -945,6 +951,8 @@ u64	rtw_modular64(u64 x, u64 y);
  * @return	  0
 */
 int	rtw_get_random_bytes(void* dst, u32 size);
+
+int   rtw_get_random_bytes_f_rng( void *p_rng, unsigned char *output, size_t output_size );
 
 /**
  * @brief  This function gets the available heap size.

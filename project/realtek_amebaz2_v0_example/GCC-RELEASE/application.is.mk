@@ -161,8 +161,8 @@ INCLUDES += -I../../../component/os/freertos/freertos_v10.0.1/Source/include
 INCLUDES += -I../../../component/os/freertos/freertos_v10.0.1/Source/portable/GCC/ARM_RTL8710C
 INCLUDES += -I../../../component/os/os_dep/include
 
-INCLUDES += -I../../../component/common/application/amazon/amazon-ffs/libffs/include
-INCLUDES += -I../../../component/common/application/amazon/amazon-ffs/ffs_linux/libffs/include
+INCLUDES += -I../../../component/common/application/amazon/amazon-ffs/ffs_demo/common/include
+INCLUDES += -I../../../component/common/application/amazon/amazon-ffs/ffs_demo/realtek/configs
 
 # Source file list
 # -------------------------------------------------------------------
@@ -216,13 +216,6 @@ SRC_C += ../../../component/common/bluetooth/realtek/sdk/example/ble_peripheral/
 SRC_C += ../../../component/common/bluetooth/realtek/sdk/example/ble_peripheral/ble_app_main.c
 SRC_C += ../../../component/common/bluetooth/realtek/sdk/example/ble_peripheral/ble_peripheral_at_cmd.c
 SRC_C += ../../../component/common/bluetooth/realtek/sdk/example/ble_peripheral/peripheral_app.c
-
-#bluetooth - example - ble_scatternet
-SRC_C += ../../../component/common/bluetooth/realtek/sdk/example/ble_scatternet/ble_scatternet_app.c
-SRC_C += ../../../component/common/bluetooth/realtek/sdk/example/ble_scatternet/ble_scatternet_app_main.c
-SRC_C += ../../../component/common/bluetooth/realtek/sdk/example/ble_scatternet/ble_scatternet_app_task.c
-SRC_C += ../../../component/common/bluetooth/realtek/sdk/example/ble_scatternet/ble_scatternet_link_mgr.c
-SRC_C += ../../../component/common/bluetooth/realtek/sdk/example/ble_scatternet/ble_scatternet_user_cmd.c
 
 #bluetooth - example - bt_config
 SRC_C += ../../../component/common/bluetooth/realtek/sdk/example/bt_config/bt_config_app_main.c
@@ -282,6 +275,7 @@ SRC_C += ../../../component/common/api/network/src/wlan_network.c
 SRC_C += ../../../component/common/utilities/cJSON.c
 SRC_C += ../../../component/common/utilities/http_client.c
 SRC_C += ../../../component/common/utilities/xml.c
+SRC_C += ../../../component/common/utilities/gb2unicode.c
 
 #network - app - mqtt
 SRC_C += ../../../component/common/application/mqtt/MQTTClient/MQTTClient.c
@@ -384,6 +378,7 @@ SRC_C += ../../../component/common/network/ssl/mbedtls-2.4.0/library/cipher.c
 SRC_C += ../../../component/common/network/ssl/mbedtls-2.4.0/library/cipher_wrap.c
 SRC_C += ../../../component/common/network/ssl/mbedtls-2.4.0/library/cmac.c
 SRC_C += ../../../component/common/network/ssl/mbedtls-2.4.0/library/debug.c
+SRC_C += ../../../component/common/network/ssl/mbedtls-2.4.0/library/entropy.c
 SRC_C += ../../../component/common/network/ssl/mbedtls-2.4.0/library/error.c
 SRC_C += ../../../component/common/network/ssl/mbedtls-2.4.0/library/gcm.c
 SRC_C += ../../../component/common/network/ssl/mbedtls-2.4.0/library/havege.c
@@ -500,16 +495,19 @@ SRC_C += ../../../component/common/file_system/fatfs/disk_if/src/flash_fatfs.c
 SRC_C += ../../../component/common/example/bcast/example_bcast.c
 SRC_C += ../../../component/common/example/cJSON/example_cJSON.c
 SRC_C += ../../../component/common/example/coap/example_coap.c
+SRC_C += ../../../component/common/example/coap_client/example_coap_client.c
+SRC_C += ../../../component/common/example/coap_server/example_coap_server.c
 SRC_C += ../../../component/common/example/dct/example_dct.c
 #SRC_C += ../../../component/common/example/eap/example_eap.c
 SRC_C += ../../../component/common/example/example_entry.c
 SRC_C += ../../../component/common/example/get_beacon_frame/example_get_beacon_frame.c
-#SRC_C += ../../../component/common/example/googlenest/example_google.c
+
 SRC_C += ../../../component/common/example/high_load_memory_use/example_high_load_memory_use.c
 SRC_C += ../../../component/common/example/http_client/example_http_client.c
 SRC_C += ../../../component/common/example/http_download/example_http_download.c
 SRC_C += ../../../component/common/example/httpc/example_httpc.c
 SRC_C += ../../../component/common/example/httpd/example_httpd.c
+SRC_C += ../../../component/common/example/mbedtls_ecdhe/example_mbedtls_ecdhe.c
 SRC_C += ../../../component/common/example/mcast/example_mcast.c
 SRC_C += ../../../component/common/example/mqtt/example_mqtt.c
 SRC_C += ../../../component/common/example/nonblock_connect/example_nonblock_connect.c
@@ -602,7 +600,7 @@ LFLAGS += -Wl,-wrap,atoui   -Wl,-wrap,atol     -Wl,-wrap,atoul
 LFLAGS += -Wl,-wrap,atoull  -Wl,-wrap,atof
 LFLAGS += -Wl,-wrap,malloc  -Wl,-wrap,realloc
 LFLAGS += -Wl,-wrap,calloc  -Wl,-wrap,free
-LFLAGS += -Wl,-wrap,_malloc_r  -Wl,-wrap,_calloc_r
+LFLAGS += -Wl,-wrap,_malloc_r  -Wl,-wrap,_calloc_r  -Wl,-wrap,_realloc_r  -Wl,-wrap,_free_r
 LFLAGS += -Wl,-wrap,memcmp  -Wl,-wrap,memcpy
 LFLAGS += -Wl,-wrap,memmove -Wl,-wrap,memset
 LFLAGS += -Wl,-wrap,printf  -Wl,-wrap,sprintf
@@ -663,7 +661,13 @@ endif
 	$(ELF2BIN) convert amebaz2_bootloader.json BOOTLOADER secure_bit=0
 	$(ELF2BIN) convert amebaz2_bootloader.json PARTITIONTABLE secure_bit=0
 	$(ELF2BIN) convert amebaz2_firmware_is.json FIRMWARE secure_bit=0
+#ifeq ($(findstring Linux, $(OS)), Linux)
+#	chmod 777 $(AMEBAZ2_GCCTOOLDIR)/LZMA_GenCompressedFW_linux
+#endif
+#	$(LZMA_PY) $(BIN_DIR)/firmware_is.bin
+
 	$(CHKSUM) $(BIN_DIR)/firmware_is.bin
+#	$(CHKSUM) $(BIN_DIR)/firmware_is_lzma.bin
 	$(ELF2BIN) combine $(BIN_DIR)/flash_is.bin PTAB=partition.bin,BOOT=$(BOOT_BIN_DIR)/bootloader.bin,FW1=$(BIN_DIR)/firmware_is.bin
 
 # Generate build info

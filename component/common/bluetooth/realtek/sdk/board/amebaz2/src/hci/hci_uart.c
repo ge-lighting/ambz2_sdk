@@ -5,16 +5,14 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "os_mem.h"
 #include "hci_uart.h"
 #include "trace_app.h"
 #include "bt_board.h"
-#include "os_sync.h"
-#include "os_task.h"
 #include "serial_api.h"
 #include "serial_ex_api.h"
+#include "osif.h"
 
-#define HCI_UART_TX_DMA    0
+#define HCI_UART_TX_DMA    1
 
 static serial_t hci_serial_obj;
 extern uint8_t flag_for_hci_trx;
@@ -24,7 +22,7 @@ void *uart_send_done_task = NULL;
 void *uart_send_done_sem = NULL;
 
 #define UART_SEND_DONE_TASK_PRIORITY             5
-#define UART_SEND_DONE_TASK_STACK_SIZE           256
+#define UART_SEND_DONE_TASK_STACK_SIZE           512
 
 #define HCI_UART_TX_BUF_SIZE        512      /* TX buffer size 512 */
 #endif
@@ -82,27 +80,20 @@ extern void bt_uart_tx(uint8_t rc);
 }
 
 //=============================interal=========================
+#if defined(HCI_UART_TX_DMA) && HCI_UART_TX_DMA
 static void uart_send_done(uint32_t id)
 {
-#if defined(HCI_UART_TX_DMA) && HCI_UART_TX_DMA
-    os_sem_give(uart_send_done_sem);
-#else
-    T_HCI_UART *hci_rtk_obj = hci_uart_obj;
-    if (hci_rtk_obj->tx_cb)
-    {
-        hci_rtk_obj->tx_cb();
-    }
-#endif
+    if (uart_send_done_sem != NULL)
+        osif_sem_give(uart_send_done_sem);
 }
 
-#if defined(HCI_UART_TX_DMA) && HCI_UART_TX_DMA
 static void uart_send_done_handler(void *p_param)
 {
     (void)p_param;
 
     while (1) {
-        if (os_sem_take(uart_send_done_sem, 0xFFFFFFFF) == false) {
-            hci_board_debug("uart_send_done_handle: os_sem_take uart_send_done_sem fail\r\n");
+        if (osif_sem_take(uart_send_done_sem, 0xFFFFFFFF) == false) {
+            hci_board_debug("uart_send_done_handle: osif_sem_take uart_send_done_sem fail\r\n");
         } else {
             T_HCI_UART *hci_rtk_obj = hci_uart_obj;
             if (hci_rtk_obj->tx_cb)
@@ -120,14 +111,14 @@ void hci_uart_rx_disable(T_HCI_UART *hci_adapter)
      * the rx data will stay in UART FIFO, and RTS will be pulled high if
      * the watermark is higher than rx trigger level. */
     hci_board_debug("hci_uart_rx_disable\r\n");
-    serial_rts_control(&hci_serial_obj,0); 
+    serial_irq_set(&hci_serial_obj, RxIrq, 0);
     hci_adapter->rx_disabled = true;
 }
 
 void hci_uart_rx_enable(T_HCI_UART *hci_adapter)
 {
     hci_board_debug("hci_uart_rx_enable\r\n");
-    serial_rts_control(&hci_serial_obj,1); 
+    serial_irq_set(&hci_serial_obj, RxIrq, 1);
     hci_adapter->rx_disabled = false;
 }
 
@@ -202,24 +193,25 @@ static bool hci_uart_malloc(void)
 {
     if(hci_uart_obj == NULL)
     {
-        hci_uart_obj = os_mem_zalloc(RAM_TYPE_DATA_ON, sizeof(T_HCI_UART)); //reopen not need init uart
+        hci_uart_obj = osif_mem_alloc(RAM_TYPE_DATA_ON, sizeof(T_HCI_UART)); //reopen not need init uart
 
         if(!hci_uart_obj)
         {
-            hci_board_debug("hci_uart_malloc: need %d, left %d\r\n", sizeof(T_HCI_UART), os_mem_peek(RAM_TYPE_DATA_ON));
+            hci_board_debug("hci_uart_malloc: need %d, left %d\r\n", sizeof(T_HCI_UART), osif_mem_peek(RAM_TYPE_DATA_ON));
             return false;
         }
         else
         {
-          hci_uart_obj->rx_read_idx = 0;
-          hci_uart_obj->rx_write_idx = 0;
+            memset(hci_uart_obj, 0, sizeof(T_HCI_UART));
+            hci_uart_obj->rx_read_idx = 0;
+            hci_uart_obj->rx_write_idx = 0;
 #if defined(HCI_UART_TX_DMA) && HCI_UART_TX_DMA
-          if ((uint32_t)hci_uart_obj->tx_buffer % 32 != 0)
-              hci_uart_obj->tx_buffer_aligned = hci_uart_obj->tx_buffer + (32 - (uint32_t)hci_uart_obj->tx_buffer % 32);
-          else
-              hci_uart_obj->tx_buffer_aligned = hci_uart_obj->tx_buffer;
-          //hci_board_debug("hci_uart_obj->tx_buffer = 0x%x\r\n", hci_uart_obj->tx_buffer);
-          //hci_board_debug("hci_uart_obj->tx_buffer_aligned = 0x%x\r\n", hci_uart_obj->tx_buffer_aligned);
+            if ((uint32_t)hci_uart_obj->tx_buffer % 32 != 0)
+                hci_uart_obj->tx_buffer_aligned = hci_uart_obj->tx_buffer + (32 - (uint32_t)hci_uart_obj->tx_buffer % 32);
+            else
+                hci_uart_obj->tx_buffer_aligned = hci_uart_obj->tx_buffer;
+            //hci_board_debug("hci_uart_obj->tx_buffer = 0x%x\r\n", hci_uart_obj->tx_buffer);
+            //hci_board_debug("hci_uart_obj->tx_buffer_aligned = 0x%x\r\n", hci_uart_obj->tx_buffer_aligned);
 #endif
         }
     }
@@ -238,7 +230,7 @@ static bool hci_uart_free(void)
         hci_board_debug("hci_uart_malloc: hci_uart_obj = NULL, no need free\r\n");
         return false;
     }
-    os_mem_free(hci_uart_obj);
+    osif_mem_free(hci_uart_obj);
     hci_uart_obj = NULL;
     //hci_board_debug("%s: hci_uart_obj  free\r\n",__FUNCTION__);
     return true;
@@ -297,12 +289,12 @@ bool hci_uart_init(P_UART_RX_CB rx_ind)
     hci_uart_obj->rx_ind = rx_ind;
 
 #if defined(HCI_UART_TX_DMA) && HCI_UART_TX_DMA
-    if (os_sem_create(&uart_send_done_sem, 0, 1) == false) {
-        hci_board_debug("hci_uart_init: os_sem_create uart_send_done_sem fail\r\n");
+    if (osif_sem_create(&uart_send_done_sem, 0, 1) == false) {
+        hci_board_debug("hci_uart_init: osif_sem_create uart_send_done_sem fail\r\n");
         return false;
     }
-    if (os_task_create(&uart_send_done_task, "uart_send_done_handler", uart_send_done_handler, 0, UART_SEND_DONE_TASK_STACK_SIZE, UART_SEND_DONE_TASK_PRIORITY) == false){
-        hci_board_debug("hci_uart_init: os_task_create uart_send_done_task fail\r\n");
+    if (osif_task_create(&uart_send_done_task, "uart_send_done_handler", uart_send_done_handler, 0, UART_SEND_DONE_TASK_STACK_SIZE, UART_SEND_DONE_TASK_PRIORITY) == false){
+        hci_board_debug("hci_uart_init: osif_task_create uart_send_done_task fail\r\n");
         return false;
     }
 #endif
@@ -313,8 +305,9 @@ bool hci_uart_init(P_UART_RX_CB rx_ind)
     hci_serial_obj.uart_adp.base_addr->fcr_b.rxfifo_trigger_level = FifoLvHalf;
     //serial_rx_fifo_level(&comuart_sobj, FifoLvHalf);
     serial_set_flow_control(&hci_serial_obj, FlowControlRTSCTS, NC, NC);
+#if defined(HCI_UART_TX_DMA) && HCI_UART_TX_DMA
     serial_send_comp_handler(&hci_serial_obj, (void *)uart_send_done, (uint32_t)hci_uart_obj);
-
+#endif
     serial_clear_rx(&hci_serial_obj);
     serial_irq_handler(&hci_serial_obj, hciuart_irq, (uint32_t)&hci_serial_obj);
     serial_irq_set(&hci_serial_obj, RxIrq, 0);
@@ -332,11 +325,11 @@ bool hci_uart_deinit(void)
 
 #if defined(HCI_UART_TX_DMA) && HCI_UART_TX_DMA
         if (uart_send_done_task != NULL) {
-            os_task_delete(uart_send_done_task);
+            osif_task_delete(uart_send_done_task);
             uart_send_done_task = NULL;
         }
         if (uart_send_done_sem != NULL) {
-            os_sem_delete(uart_send_done_sem);
+            osif_sem_delete(uart_send_done_sem);
             uart_send_done_sem = NULL;
         }
 #endif

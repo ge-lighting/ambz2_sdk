@@ -166,6 +166,17 @@ enum {
 };
 typedef unsigned long rtw_security_t;
 
+enum
+{
+	WPA_AUTO_MODE,
+	WPA_ONLY_MODE,
+	WPA2_ONLY_MODE,
+	WPA3_ONLY_MODE,
+	WPA_WPA2_MIXED_MODE,
+	WPA2_WPA3_MIXED_MODE
+};
+typedef unsigned long rtw_wpa_mode;
+
 enum {
     RTW_ENCRYPTION_UNKNOWN = 0,                 
     RTW_ENCRYPTION_OPEN = 1,
@@ -562,6 +573,9 @@ enum{
 	RTW_WRONG_PASSWORD = 3 ,
 	RTW_4WAY_HANDSHAKE_TIMEOUT = 4,
 	RTW_DHCP_FAIL = 5,
+	RTW_AUTH_FAIL = 6,
+	RTW_ASSOC_FAIL =7,
+	RTW_DEAUTH_DEASSOC = 8,
 	RTW_UNKNOWN,
 };
 typedef unsigned long rtw_connect_error_flag_t;
@@ -605,6 +619,9 @@ enum _WIFI_EVENT_INDICATE{
 	WIFI_EVENT_STA_GOT_IP = 23,
 	WIFI_EVENT_STA_LOST_IP = 24,
 	WIFI_EVENT_NO_BEACON = 25,
+	WIFI_EVENT_TARGET_SSID_RSSI = 26,
+	WIFI_EVENT_DHCP_RENEW = 27,
+	WIFI_EVENT_SWITCH_CHANNE = 28,	
 	WIFI_EVENT_MAX,
 };
 typedef unsigned long rtw_event_indicate_t;

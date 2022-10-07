@@ -202,10 +202,17 @@ extern void restore_flags(void);
 		#ifdef CONFIG_HIGH_TP_TEST
 			#define MAX_SKB_BUF_SIZE			2104
 		#else
-			#define MAX_SKB_BUF_SIZE			(HAL_INTERFACE_OVERHEAD_SKB_DATA+RX_DRIVER_INFO+\
+			#if (SKB_PRE_ALLOCATE_RX == 1)
+				#define MAX_SKB_BUF_SIZE		(HAL_INTERFACE_OVERHEAD_SKB_DATA+RX_DRIVER_INFO+\
+												RXDESC_SIZE +\
+												(MAX_RX_PKT_LIMIT * 512) +\
+												SKB_RESERVED_FOR_SAFETY)		// 0+32+24+512*4+0 = 2104
+			#else
+				#define MAX_SKB_BUF_SIZE		(HAL_INTERFACE_OVERHEAD_SKB_DATA+RX_DRIVER_INFO+\
 												((TXDESC_SIZE>RXDESC_SIZE)? TXDESC_SIZE:RXDESC_SIZE) +\
 												MAX_RX_PKT_SIZE +\
 												SKB_RESERVED_FOR_SAFETY)	// 0+32+40+1578+0 = 1650
+			#endif
 		#endif
 	#endif
 #else
@@ -394,6 +401,7 @@ extern unsigned char *skb_pull(struct sk_buff *skb, unsigned int len);
 // Device structure
 //----- ------------------------------------------------------------------
 struct net_device_stats {
+  	unsigned long   rx_data_packets;             /* total packets received       */
 	unsigned long   rx_packets;             /* total packets received       */
 	unsigned long   tx_packets;             /* total packets transmitted    */
 	unsigned long   rx_dropped;             /* no space in linux buffers    */

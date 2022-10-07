@@ -96,7 +96,9 @@
 //#define CONFIG_DEBUG
 //#define CONFIG_DEBUG_RTL871X
 #if (CONFIG_PLATFORM_AMEBA_X == 1)
+#ifndef PLATFORM_OHOS
 	#define CONFIG_MEM_MONITOR	MEM_MONITOR_SIMPLE
+#endif
 	#define WLAN_INTF_DBG		0 
 	//#define CONFIG_DEBUG_DYNAMIC
 	//#define DBG_TX 1
@@ -104,7 +106,9 @@
 	//#define DBG_XMIT_BUF_EXT 1
 	#define DBG_TX_DROP_FRAME
 #else
+#ifndef PLATFORM_OHOS
 	#define CONFIG_MEM_MONITOR	MEM_MONITOR_SIMPLE
+#endif
 	//#define CONFIG_TRACE_SKB
 	//#define WLAN_INTF_DBG
 #endif // CONFIG_PLATFORM_AMEBA_X
@@ -229,10 +233,9 @@
 #define CONFIG_PMKSA_CACHING
 
 /* For WPA3 */
-#ifndef PLATFORM_OHOS
 #define CONFIG_IEEE80211W
 #define CONFIG_SAE_SUPPORT
-#endif
+
 #ifdef CONFIG_SAE_SUPPORT
 #define CONFIG_SAE_DH_SUPPORT 1
 #define ALL_DH_GROUPS
@@ -271,12 +274,17 @@
       #ifndef CONFIG_RX_PACKET_APPEND_FCS
         #define CONFIG_RX_PACKET_APPEND_FCS
       #endif
+      #define CONFIG_SOFTAP_KEEP_SILENT_TABLE
     #endif
   #endif
   #if defined(CONFIG_PLATFORM_8195A) || defined(CONFIG_PLATFORM_8195BHP) || defined(CONFIG_PLATFORM_8710C)
     #define CONFIG_RUNTIME_PORT_SWITCH
   #endif
-  #define NET_IF_NUM ((CONFIG_ETHERNET) + (CONFIG_WLAN) + 1)
+  #if (defined(CONFIG_BRIDGE) && CONFIG_BRIDGE)
+    #define NET_IF_NUM ((CONFIG_ETHERNET) + (CONFIG_BRIDGE) + (CONFIG_WLAN) + 1)
+  #else
+    #define NET_IF_NUM ((CONFIG_ETHERNET) + (CONFIG_WLAN) + 1)
+  #endif
 #else
   #define NET_IF_NUM ((CONFIG_ETHERNET) + (CONFIG_WLAN))
 #endif
@@ -782,6 +790,22 @@ extern unsigned int g_ap_sta_num;
 		#define EXCHANGE_LXBUS_RX_SKB 0
 	#endif
 #endif
+
+// Fine tune T-put for LG
+#ifdef CONFIG_MCC_STA_AP_MODE
+	#ifdef CONFIG_HIGH_TP_TEST
+		#undef CONFIG_HIGH_TP_TEST
+	#endif
+	#ifdef SKB_PRE_ALLOCATE_RX
+		#undef SKB_PRE_ALLOCATE_RX
+	#endif
+	#define SKB_PRE_ALLOCATE_RX	1
+	#ifdef EXCHANGE_LXBUS_RX_SKB
+		#undef EXCHANGE_LXBUS_RX_SKB
+	#endif
+	#define EXCHANGE_LXBUS_RX_SKB	1
+#endif
+
 #if (defined(CONFIG_FPGA) && !defined(CONFIG_PLATFORM_8710C))\
 	|| (defined(CONFIG_PLATFORM_8710C) && defined(CONFIG_MAC_LOOPBACK_DRIVER_RTL8710C) && (CONFIG_MAC_LOOPBACK_DRIVER_RTL8710C == 1))
 	//Enable mac loopback for test mode (Ameba)

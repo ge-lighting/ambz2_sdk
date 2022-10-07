@@ -1,0 +1,15 @@
+"D:\Program\IAR Systems\Embedded Workbench 8.2\arm\bin\armproc.dll" 
+
+"D:\Program\IAR Systems\Embedded Workbench 8.2\arm\bin\armjlink2.dll" 
+
+"D:\Desktop\Ameba_sdk_github\ambz2_sdk\project\realtek_amebaz2_v0_example\EWARM-RELEASE\Debug\Exe\application_is.out" 
+
+--plugin="D:\Program\IAR Systems\Embedded Workbench 8.2\arm\bin\armbat.dll" 
+
+--macro="D:\Desktop\Ameba_sdk_github\ambz2_sdk\project\realtek_amebaz2_v0_example\EWARM-RELEASE\debug.mac" 
+
+--flash_loader="D:\Desktop\Ameba_sdk_github\ambz2_sdk\project\realtek_amebaz2_v0_example\EWARM-RELEASE\..\..\..\component\soc\realtek\8710c\misc\iar_utility\flashloader\FlashRTL8710c.board" 
+
+
+
+

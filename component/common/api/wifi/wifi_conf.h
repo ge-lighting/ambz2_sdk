@@ -82,6 +82,12 @@
 #define PSCAN_FAST_SURVEY 0x02 //set to select scan time to FAST_SURVEY_TO, otherwise SURVEY_TO
 #define PSCAN_SIMPLE_CONFIG   0x04 //set to select scan time to FAST_SURVEY_TO and resend probe request
 
+typedef enum _WL_BAND_TYPE {
+	WL_BAND_2_4G = 0,
+	WL_BAND_5G,
+	WL_BAND_2_4G_5G_BOTH,
+	WL_BANDMAX
+} WL_BAND_TYPE, *PWL_BAND_TYPE;
 /******************************************************
  *                 Type Definitions
  ******************************************************/
@@ -343,6 +349,13 @@ int wifi_get_ap_info(rtw_bss_info_t * ap_info, rtw_security_t* security);
 int wifi_set_country(rtw_country_code_t country_code);
 
 /**
+ * @brief  get the country code from driver
+ * @param[in]  country_code: Specify the country code.
+ * @return  RTW_SUCCESS: The country code is successfully set.
+ * @return  RTW_ERROR: The country code is not successfully set.
+ */
+int wifi_get_country(rtw_country_code_t *country_code);
+/**
  * @brief  get sta mode MAX data rate.
  * @param[out]  inidata_rate: the location will the MAX data rate
  * 	will be stored.
@@ -486,6 +499,14 @@ int wifi_set_mode(rtw_mode_t mode);
  *  	   RTW_ERROR otherwise
  */
 int wifi_off_fastly(void);
+
+/**
+ * @brief  Specify wpa mode for wifi connection.
+ * @param[in] wpa_mode: The desired wpa mode. It is defined as enum rtw_wpa_mode.
+ * @return  RTW_SUCCESS if setting wpa mode successful.
+ * @return  RTW_ERROR otherwise.
+ */
+int wifi_set_wpa_mode(rtw_wpa_mode wpa_mode);
 
 /**
  * @brief  Set IPS/LPS mode.
@@ -740,6 +761,15 @@ int wifi_scan_networks_with_ssid_by_extended_security(int (results_handler)(char
 * 	to get scanned results.
 */
 int wifi_set_pscan_chan(__u8 * channel_list,__u8 * pscan_config, __u8 length);
+
+/*
+ * @brief get band type
+ * @return  the support band type.
+ * 	0) WL_BAND_2_4G: only support 2.4G
+ * 	1) WL_BAND_5G: only support 5G
+ * 	2) WL_BAND_2_4G_5G_BOTH: support both 2.4G and 5G
+ */
+WL_BAND_TYPE wifi_get_band_type(void);
 
 /**
  * @brief  Get current Wi-Fi setting from driver.
